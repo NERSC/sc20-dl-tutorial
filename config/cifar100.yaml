@@ -1,0 +1,57 @@
+default: &DEFAULT
+
+  lr: !!float 0.1
+  momentum: !!float 0.9
+  weight_decay: !!float 5e-4
+  lr_warmup_epochs: 0
+
+  #mean and std of cifar100 dataset
+  cifar100_mean: [0.5070751592371323, 0.48654887331495095, 0.4409178433670343]
+  cifar100_std: [0.2673342858792401, 0.2564384629170883, 0.27615047132568404]
+  data_path: './data' # will be automatically downloaded if not available
+  rnd_rotation_angle: 15
+  num_data_workers: 6
+  num_classes: 100
+
+  max_epochs: 200
+  batch_size: 128
+  valid_batch_size_per_gpu: 128
+
+  log_to_screen: !!bool True
+  log_to_tensorboard: !!bool True
+  save_checkpoint: !!bool True
+
+bs128:
+  <<: *DEFAULT
+
+bs256:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+
+bs512:
+  <<: *DEFAULT
+  lr: !!float 0.2
+  batch_size: 512
+
+bs1024:
+  <<: *DEFAULT
+  lr: !!float 0.28
+  batch_size: 1024
+
+bs2048:
+  <<: *DEFAULT
+  lr: !!float 0.4
+  batch_size: 2048
+
+bs1024_warmup:
+  <<: *DEFAULT
+  lr: !!float 0.28
+  batch_size: 1024
+  lr_warmup_epochs: 8
+
+bs2048_warmup:
+  <<: *DEFAULT
+  lr: !!float 0.4
+  batch_size: 2048
+  lr_warmup_epochs: 16

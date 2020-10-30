@@ -1,0 +1,19 @@
+#!/bin/bash -l
+#SBATCH --time=4:00:00
+#SBATCH -C gpu
+
+#SBATCH --account=m1759
+##SBATCH -q special
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-task=4
+#SBATCH --cpus-per-task=40
+#SBATCH -o sout/%j.out
+
+#SBATCH --image=nersc/pytorch:ngc-20.08-v0
+#SBATCH --volume="/dev/infiniband:/sys/class/infiniband_verbs"
+
+srun --nodes=1 --ntasks=1 shifter --env HDF5_USE_FILE_LOCKING=FALSE <<EOF
+python -m torch.distributed.launch --nproc_per_node=4 train.py --config=bs1024
+EOF
