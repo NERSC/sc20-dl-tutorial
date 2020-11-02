@@ -20,6 +20,7 @@ default: &DEFAULT
   log_to_screen: !!bool True
   log_to_tensorboard: !!bool True
   save_checkpoint: !!bool True
+  log_freq: 20
 
 bs128:
   <<: *DEFAULT

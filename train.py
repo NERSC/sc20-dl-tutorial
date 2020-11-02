@@ -103,8 +103,10 @@ class Trainer():
     self.epoch += 1
     tr_time = 0
     data_time = 0
+    report_time = report_bs = 0
     for i, data in enumerate(self.train_data_loader, 0):
       self.iters += 1
+      iter_start = time.time()
       data_start = time.time()
       images, labels = map(lambda x: x.to(self.device), data)
       data_time += time.time() - data_start
@@ -117,6 +119,13 @@ class Trainer():
       loss.backward()
       self.optimizer.step()
       tr_time += time.time() - tr_start
+      iter_time = time.time() - iter_start
+      report_time += iter_time
+      report_bs += len(images)
+
+      if i % self.params.log_freq == 0:
+        logging.info('Epoch: {}, Iteration: {}, Avg img/sec: {}'.format(self.epoch, i, report_bs / report_time))
+        report_time = report_bs = 0
 
     # save metrics of last batch
     _, preds = outputs.max(1)
