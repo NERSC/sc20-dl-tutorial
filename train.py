@@ -14,12 +14,23 @@ import models.resnet
 from utils.YParams import YParams
 from utils.cifar100_data_loader import get_data_loader
 
+# PROF: define wrapped NVTX range routines with device syncs
+def nvtx_range_push(name, enabled):
+  if enabled:
+    torch.cuda.synchronize()
+    torch.cuda.nvtx.range_push(name)
+
+def nvtx_range_pop(enabled):
+  if enabled:
+    torch.cuda.synchronize()
+    torch.cuda.nvtx.range_pop()
+
 class Trainer():
 
   def __init__(self, params):
     self.params = params
     self.device = torch.cuda.current_device()
-    # AMP 1: Construct GradScaler for loss scaling
+    # AMP: Construct GradScaler for loss scaling
     self.grad_scaler = torch.cuda.amp.GradScaler(self.params.enable_amp)
 
     # first constrcut the dataloader on rank0 in case the data is not downloaded
@@ -43,7 +54,7 @@ class Trainer():
     self.model = models.resnet.resnet50(num_classes=params.num_classes).to(self.device)
 
     if self.params.enable_nhwc:
-      # NHWC 1: Convert model to channels_last memory format
+      # NHWC: Convert model to channels_last memory format
       self.model = self.model.to(memory_format=torch.channels_last)
 
     self.optimizer = torch.optim.SGD(self.model.parameters(), lr=params.lr,
@@ -72,7 +83,7 @@ class Trainer():
     if self.params.log_to_screen:
       logging.info("Starting Training Loop...")
 
-    # PROF 1: Enable torch built-in NVTX ranges
+    # PROF: Enable torch built-in NVTX ranges
     with torch.autograd.profiler.emit_nvtx(enabled=self.params.enable_profiling):
       for epoch in range(self.startEpoch, self.params.max_epochs):
         if dist.is_initialized():
@@ -83,10 +94,10 @@ class Trainer():
           self.optimizer.param_groups[0]['lr'] = params.lr*float(epoch+1.)/float(params.lr_warmup_epochs)
 
         start = time.time()
-        # PROF 2: Add custom NVTX ranges
-        torch.cuda.nvtx.range_push('epoch {}'.format(self.epoch))
+        # PROF: Add custom NVTX ranges
+        nvtx_range_push('epoch {}'.format(self.epoch), self.params.enable_profiling)
         tr_time, data_time, train_logs = self.train_one_epoch()
-        torch.cuda.nvtx.range_pop()
+        nvtx_range_pop(self.params.enable_profiling)
         valid_time, valid_logs = self.validate_one_epoch()
         if epoch >= params.lr_warmup_epochs:
           self.scheduler.step(valid_logs['loss'])
@@ -116,41 +127,50 @@ class Trainer():
     data_time = 0
     report_time = report_bs = 0
     for i, data in enumerate(self.train_data_loader, 0):
-      # PROF 2: Add custom NVTX ranges
-      torch.cuda.nvtx.range_push('step {}'.format(i))
+      # PROF: Add custom NVTX ranges
+      nvtx_range_push('iteration {}'.format(i), self.params.enable_profiling)
       self.iters += 1
       iter_start = time.time()
       data_start = time.time()
-      # PROF 2: Add custom NVTX ranges
-      torch.cuda.nvtx.range_push('data')
+      # PROF: Add custom NVTX ranges
+      nvtx_range_push('data', self.params.enable_profiling)
       images, labels = map(lambda x: x.to(self.device), data)
-      # NHWC 2: Convert input images to channels_last memory format
+      # NHWC: Convert input images to channels_last memory format
       if self.params.enable_nhwc:
         images = images.to(memory_format=torch.channels_last)
-      torch.cuda.nvtx.range_pop()
+      nvtx_range_pop(self.params.enable_profiling)
       data_time += time.time() - data_start
 
       tr_start = time.time()
-      # PROF 2: Add custom NVTX ranges
-      torch.cuda.nvtx.range_push('zero_grad')
+      # PROF: Add custom NVTX ranges
+      nvtx_range_push('zero_grad', self.params.enable_profiling)
       self.model.zero_grad()
-      torch.cuda.nvtx.range_pop()
+      nvtx_range_pop(self.params.enable_profiling)
       self.model.train()
-      # AMP 2: Add autocast context manager
+      # AMP: Add autocast context manager
       with torch.cuda.amp.autocast(self.params.enable_amp):
+        # PROF: Add custom NVTX ranges
+        nvtx_range_push('forward + loss', self.params.enable_profiling)
         outputs = self.model(images)
         loss = self.criterion(outputs, labels)
+        nvtx_range_pop(self.params.enable_profiling)
 
-      # AMP 3: Use GradScaler to scale loss and run backward to produce scaled gradients
+      # PROF: Add custom NVTX ranges
+      nvtx_range_push('backward', self.params.enable_profiling)
+      # AMP: Use GradScaler to scale loss and run backward to produce scaled gradients
       self.grad_scaler.scale(loss).backward()
+      nvtx_range_pop(self.params.enable_profiling)
 
-      # AMP 4: Run optimizer step through GradScaler (unscales gradients and skips steps if required)
+      # PROF: Add custom NVTX ranges
+      nvtx_range_push('optimizer step', self.params.enable_profiling)
+      # AMP: Run optimizer step through GradScaler (unscales gradients and skips steps if required)
       self.grad_scaler.step(self.optimizer)
+      nvtx_range_pop(self.params.enable_profiling)
 
-      # AMP 5: Update GradScaler loss scale value
+      # AMP: Update GradScaler loss scale value
       self.grad_scaler.update()
 
-      torch.cuda.nvtx.range_pop()
+      nvtx_range_pop(self.params.enable_profiling)
 
       tr_time += time.time() - tr_start
       iter_time = time.time() - iter_start
