@@ -68,35 +68,40 @@ class Trainer():
     if self.params.log_to_screen:
       logging.info("Starting Training Loop...")
 
-    for epoch in range(self.startEpoch, self.params.max_epochs):
-      if dist.is_initialized():
-        self.train_sampler.set_epoch(epoch)
-        self.valid_sampler.set_epoch(epoch)
+    # PROF 1: Enable torch built-in NVTX ranges
+    with torch.autograd.profiler.emit_nvtx(enabled=self.params.enable_profiling):
+      for epoch in range(self.startEpoch, self.params.max_epochs):
+        if dist.is_initialized():
+          self.train_sampler.set_epoch(epoch)
+          self.valid_sampler.set_epoch(epoch)
 
-      if epoch < params.lr_warmup_epochs:
-        self.optimizer.param_groups[0]['lr'] = params.lr*float(epoch+1.)/float(params.lr_warmup_epochs)
+        if epoch < params.lr_warmup_epochs:
+          self.optimizer.param_groups[0]['lr'] = params.lr*float(epoch+1.)/float(params.lr_warmup_epochs)
 
-      start = time.time()
-      tr_time, data_time, train_logs = self.train_one_epoch()
-      valid_time, valid_logs = self.validate_one_epoch()
-      if epoch >= params.lr_warmup_epochs:
-        self.scheduler.step(valid_logs['loss'])
+        start = time.time()
+        # PROF 2: Add custom NVTX ranges
+        torch.cuda.nvtx.range_push('epoch {}'.format(self.epoch))
+        tr_time, data_time, train_logs = self.train_one_epoch()
+        torch.cuda.nvtx.range_pop()
+        valid_time, valid_logs = self.validate_one_epoch()
+        if epoch >= params.lr_warmup_epochs:
+          self.scheduler.step(valid_logs['loss'])
 
-      if self.params.world_rank == 0:
-        if self.params.save_checkpoint:
-          #checkpoint at the end of every epoch
-          self.save_checkpoint(self.params.checkpoint_path)
+        if self.params.world_rank == 0:
+          if self.params.save_checkpoint:
+            #checkpoint at the end of every epoch
+            self.save_checkpoint(self.params.checkpoint_path)
 
-      if self.params.log_to_tensorboard:
-        self.writer.add_scalar('loss/train', train_logs['loss'], self.epoch) 
-        self.writer.add_scalar('loss/valid', valid_logs['loss'], self.epoch) 
-        self.writer.add_scalar('acc1/train', train_logs['acc1'], self.epoch) 
-        self.writer.add_scalar('acc1/valid', valid_logs['acc1'], self.epoch) 
-        self.writer.add_scalar('learning_rate', self.optimizer.param_groups[0]['lr'], self.epoch)
+        if self.params.log_to_tensorboard:
+          self.writer.add_scalar('loss/train', train_logs['loss'], self.epoch)
+          self.writer.add_scalar('loss/valid', valid_logs['loss'], self.epoch)
+          self.writer.add_scalar('acc1/train', train_logs['acc1'], self.epoch)
+          self.writer.add_scalar('acc1/valid', valid_logs['acc1'], self.epoch)
+          self.writer.add_scalar('learning_rate', self.optimizer.param_groups[0]['lr'], self.epoch)
 
-      if self.params.log_to_screen:
-        logging.info('Time taken for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
-        logging.info('train data time={}, train time={}, valid step time={}, train acc1={}, valid acc1={}'.format(data_time, tr_time,
+        if self.params.log_to_screen:
+          logging.info('Time taken for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
+          logging.info('train data time={}, train time={}, valid step time={}, train acc1={}, valid acc1={}'.format(data_time, tr_time,
                                                                                                                   valid_time,
                                                                                                                   train_logs['acc1'],
                                                                                                                   valid_logs['acc1']))
@@ -107,14 +112,22 @@ class Trainer():
     data_time = 0
     report_time = report_bs = 0
     for i, data in enumerate(self.train_data_loader, 0):
+      # PROF 2: Add custom NVTX ranges
+      torch.cuda.nvtx.range_push('step {}'.format(i))
       self.iters += 1
       iter_start = time.time()
       data_start = time.time()
+      # PROF 2: Add custom NVTX ranges
+      torch.cuda.nvtx.range_push('data')
       images, labels = map(lambda x: x.to(self.device), data)
+      torch.cuda.nvtx.range_pop()
       data_time += time.time() - data_start
 
       tr_start = time.time()
+      # PROF 2: Add custom NVTX ranges
+      torch.cuda.nvtx.range_push('zero_grad')
       self.model.zero_grad()
+      torch.cuda.nvtx.range_pop()
       self.model.train()
       # AMP 2: Add autocast context manager
       with torch.cuda.amp.autocast(self.params.enable_amp):
@@ -130,6 +143,8 @@ class Trainer():
       # AMP 5: Update GradScaler loss scale value
       self.grad_scaler.update()
 
+      torch.cuda.nvtx.range_pop()
+
       tr_time += time.time() - tr_start
       iter_time = time.time() - iter_start
       report_time += iter_time
@@ -138,6 +153,9 @@ class Trainer():
       if i % self.params.log_freq == 0:
         logging.info('Epoch: {}, Iteration: {}, Avg img/sec: {}'.format(self.epoch, i, report_bs / report_time))
         report_time = report_bs = 0
+
+      if self.params.enable_profiling and self.iters >= self.params.profiling_iters:
+        break
 
     # save metrics of last batch
     _, preds = outputs.max(1)

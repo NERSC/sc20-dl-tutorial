@@ -24,6 +24,9 @@ default: &DEFAULT
 
   enable_amp: !!bool False
 
+  enable_profiling: !!bool False
+  profiling_iters: 40
+
 bs128:
   <<: *DEFAULT
 
@@ -31,6 +34,14 @@ bs256:
   <<: *DEFAULT
   lr: !!float 0.14
   batch_size: 256
+
+bs256-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_profiling: True
+  max_epochs: 1
+  save_checkpoint: False
 
 bs256-amp:
   <<: *DEFAULT
