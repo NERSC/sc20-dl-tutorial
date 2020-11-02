@@ -22,6 +22,8 @@ default: &DEFAULT
   save_checkpoint: !!bool True
   log_freq: 20
 
+  enable_amp: !!bool False
+
 bs128:
   <<: *DEFAULT
 
@@ -29,6 +31,12 @@ bs256:
   <<: *DEFAULT
   lr: !!float 0.14
   batch_size: 256
+
+bs256-amp:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
 
 bs512:
   <<: *DEFAULT

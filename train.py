@@ -19,6 +19,8 @@ class Trainer():
   def __init__(self, params):
     self.params = params
     self.device = torch.cuda.current_device()
+    # AMP 1: Construct GradScaler for loss scaling
+    self.grad_scaler = torch.cuda.amp.GradScaler(self.params.enable_amp)
 
     # first constrcut the dataloader on rank0 in case the data is not downloaded
     if params.world_rank == 0:
@@ -114,10 +116,20 @@ class Trainer():
       tr_start = time.time()
       self.model.zero_grad()
       self.model.train()
-      outputs = self.model(images)
-      loss = self.criterion(outputs, labels)
-      loss.backward()
-      self.optimizer.step()
+      # AMP 2: Add autocast context manager
+      with torch.cuda.amp.autocast(self.params.enable_amp):
+        outputs = self.model(images)
+        loss = self.criterion(outputs, labels)
+
+      # AMP 3: Use GradScaler to scale loss and run backward to produce scaled gradients
+      self.grad_scaler.scale(loss).backward()
+
+      # AMP 4: Run optimizer step through GradScaler (unscales gradients and skips steps if required)
+      self.grad_scaler.step(self.optimizer)
+
+      # AMP 5: Update GradScaler loss scale value
+      self.grad_scaler.update()
+
       tr_time += time.time() - tr_start
       iter_time = time.time() - iter_start
       report_time += iter_time
