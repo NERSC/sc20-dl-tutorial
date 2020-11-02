@@ -23,6 +23,7 @@ default: &DEFAULT
   log_freq: 20
 
   enable_amp: !!bool False
+  enable_nhwc: !!bool False
 
   enable_profiling: !!bool False
   profiling_iters: 40
@@ -48,6 +49,22 @@ bs256-amp:
   lr: !!float 0.14
   batch_size: 256
   enable_amp: True
+
+bs256-amp-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_profiling: True
+  max_epochs: 1
+  save_checkpoint: False
+
+bs256-amp-nhwc:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
 
 bs512:
   <<: *DEFAULT

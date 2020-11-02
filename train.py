@@ -42,6 +42,10 @@ class Trainer():
 
     self.model = models.resnet.resnet50(num_classes=params.num_classes).to(self.device)
 
+    if self.params.enable_nhwc:
+      # NHWC 1: Convert model to channels_last memory format
+      self.model = self.model.to(memory_format=torch.channels_last)
+
     self.optimizer = torch.optim.SGD(self.model.parameters(), lr=params.lr,
                                      momentum=params.momentum, weight_decay=params.weight_decay)
     self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=10, mode='min')
@@ -120,6 +124,9 @@ class Trainer():
       # PROF 2: Add custom NVTX ranges
       torch.cuda.nvtx.range_push('data')
       images, labels = map(lambda x: x.to(self.device), data)
+      # NHWC 2: Convert input images to channels_last memory format
+      if self.params.enable_nhwc:
+        images = images.to(memory_format=torch.channels_last)
       torch.cuda.nvtx.range_pop()
       data_time += time.time() - data_start
 
