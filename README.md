@@ -66,10 +66,10 @@ This command will run two shortened epochs of 80 iterations of the training scri
 The args `--capture-range=nvtx --nvtx-capture=PROFILE` and variable `NSYS_NVTX_PROFILER_REGISTER_ONLY=0` will limit the profiling to the NVTX range named "PROFILE", which we've used to limit profiling to the second epoch only.
 
 Loading this profile in Nsight Systems will look like this:
-<img src="https://github.com/NERSC/sc20-dl-tutorial/blob/optimization_dev/tutorial_images/nsys_baseline_full.png" width="1880" height="457" title="Baseline">
+![Baseline](tutorial_images/nsys_baseline_full.png)
 
 With our NVTX ranges, we can easily zoom into a single iteration and get an idea of where compute time is being spent:
-INSERT ZOOMED BASELINE PROFILE IMAGE HERE
+![Baseline Zoomed](tutorial_images/nsys_baseline_zoomed.png)
 
 
 ### Enabling Mixed Precision Training
@@ -109,12 +109,12 @@ INFO - Time taken for epoch 2 is 33.07876420021057 sec
 ```
 
 You can run another profile (using `--config=bs256-amp-prof`) with Nsight Systems. Loading this profile and zooming into a single iteration, this is what we see:
-INSERT ZOOMED AMP PROFILE
+![AMP Zoomed](tutorial_images/nsys_amp_zoomed.png)
 
 With AMP enabled, we see that the `forward/loss/backward` time is significatly reduced. As this is a CNN, the forward and backward convolution ops are well-suited to benefit from acceleration with tensor cores.
 
 If we zoom into the forward section of the profile to the GPU kernels, we can see very many calls to `nchwToNhwc` and `nhwcToNCHW` kernels:
-INSERT ZOOMED AMP FORWARD PROFILE
+![AMP Zoomed Kernels](tutorial_images/nsys_amp_zoomed_kernels.png)
 
 These kernels are transposing the data from PyTorch's native data layout (NCHW or channels first) to the NHWC (or channels last) format which cuDNN requires to use tensor cores. Luckily, there is a way to avoid these transposes by using the `torch.channels_last` memory
 format. To use this, we need to convert both the model and the input image tensors to this format by using the following lines:
@@ -155,7 +155,7 @@ INFO - Epoch: 2, Iteration: 180, Avg img/sec: 2162.628100059094
 INFO - Time taken for epoch 2 is 28.39500093460083 sec
 ```
 With the NCHW/NHWC tranposes removed, we see another modest gain in throughput. You can run another profile (using `--config=bs256-amp-nhwc-prof`) with Nsight Systems. Loading this profile and zooming into a single iteration, this is what we see now:
-INSERT ZOOMED AMP NHWC PROFILE
+![AMP NHWC Zoomed](tutorial_images/nsys_amp_nhwc_zoomed.png)
 
 Using the NHWC memory format with AMP, we see that the `forward/loss/backward` times are reduced further due to no longer calling the transpose kernels. Now we can move onto some other small PyTorch-specific optimizations to deal with the remaining sections that stand out in the profile.
 
@@ -207,5 +207,9 @@ INFO - Epoch: 2, Iteration: 160, Avg img/sec: 2525.3185224087124
 INFO - Epoch: 2, Iteration: 180, Avg img/sec: 2501.353650885946
 INFO - Time taken for epoch 2 is 25.808385372161865 sec
 ```
+
+We can run a final profile with all the optimizations enabled (using `--config=bs256-amp-nhwc-extra-opts-prof`) with Nsight Systems. Loading this profile and zooming into a single iteration, this is what we see now:
+![AMP NHWC Extra Zoomed](tutorial_images/nsys_amp_nhwc_extra_zoomed.png)
+With these additional optimizations enabled in PyTorch, we see the length of the `zero_grad` and `optimizer.step` ranges are greatly reduced, as well as a small improvement in the `forward/loss/backward` time.
 
 ## Distributed GPU training
