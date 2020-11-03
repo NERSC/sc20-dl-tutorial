@@ -66,7 +66,7 @@ This command will run two shortened epochs of 80 iterations of the training scri
 The args `--capture-range=nvtx --nvtx-capture=PROFILE` and variable `NSYS_NVTX_PROFILER_REGISTER_ONLY=0` will limit the profiling to the NVTX range named "PROFILE", which we've used to limit profiling to the second epoch only.
 
 Loading this profile in Nsight Systems will look like this:
-![Baseline](tutorial_images/nsys_baseline_full.png =1880×457)
+<img src="https://github.com/NERSC/sc20-dl-tutorial/blob/optimization_dev/tutorial_images/nsys_baseline_full.png" width="1880" height="457" title="Baseline">
 
 With our NVTX ranges, we can easily zoom into a single iteration and get an idea of where compute time is being spent:
 INSERT ZOOMED BASELINE PROFILE IMAGE HERE
