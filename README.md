@@ -60,7 +60,7 @@ As GPU operations can be asynchronous with respect to the Python thread, these s
 
 To generate a timeline, run the following:
 ```
-$ NSYS_NVTX_PROFILER_REGISTER_ONLY=0 nsys profile -o amp.nhwc.extra -f true --trace=cuda,nvtx --capture-range=nvtx --nvtx-capture=PROFILE python -m torch.distributed.launch --nproc_per_node=1 train.py --config=bs256-prof
+$ NSYS_NVTX_PROFILER_REGISTER_ONLY=0 nsys profile -o baseline --trace=cuda,nvtx --capture-range=nvtx --nvtx-capture=PROFILE python -m torch.distributed.launch --nproc_per_node=1 train.py --config=bs256-prof
 ```
 This command will run two shortened epochs of 80 iterations of the training script and produce a file `baseline.qdrep` that can be opened in the Nsight System's program. The arg `--trace=cuda,nvtx` is optional and is used here to disable OS Runtime tracing for speed.
 The args `--capture-range=nvtx --nvtx-capture=PROFILE` and variable `NSYS_NVTX_PROFILER_REGISTER_ONLY=0` will limit the profiling to the NVTX range named "PROFILE", which we've used to limit profiling to the second epoch only.
