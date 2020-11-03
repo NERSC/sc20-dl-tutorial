@@ -34,6 +34,7 @@ class Trainer():
     self.device = torch.cuda.current_device()
     # AMP: Construct GradScaler for loss scaling
     self.grad_scaler = torch.cuda.amp.GradScaler(enabled=self.params.enable_amp)
+    self.profiler_running = False
 
     # first constrcut the dataloader on rank0 in case the data is not downloaded
     if params.world_rank == 0:
@@ -90,109 +91,108 @@ class Trainer():
     if self.params.log_to_screen:
       logging.info("Starting Training Loop...")
 
-    # PROF: Enable torch built-in NVTX ranges
-    with torch.autograd.profiler.emit_nvtx(enabled=self.params.enable_profiling):
-      for epoch in range(self.startEpoch, self.params.max_epochs):
-        if dist.is_initialized():
-          self.train_sampler.set_epoch(epoch)
-          self.valid_sampler.set_epoch(epoch)
+    for epoch in range(self.startEpoch, self.params.max_epochs):
+      if self.params.enable_profiling and epoch + 1 == self.params.profiling_epoch_start:
+        # PROF: create range to control profiler start and stop
+        self.profiler_running = True
+        nvtx_range_push('PROFILE', self.profiler_running)
 
-        if epoch < params.lr_warmup_epochs:
-          self.optimizer.param_groups[0]['lr'] = params.lr*float(epoch+1.)/float(params.lr_warmup_epochs)
+      if dist.is_initialized():
+        self.train_sampler.set_epoch(epoch)
+        self.valid_sampler.set_epoch(epoch)
 
-        start = time.time()
-        # PROF: Add custom NVTX ranges
-        nvtx_range_push('epoch {}'.format(self.epoch), self.params.enable_profiling)
-        tr_time, data_time, train_logs = self.train_one_epoch()
-        nvtx_range_pop(self.params.enable_profiling)
-        valid_time, valid_logs = self.validate_one_epoch()
-        if epoch >= params.lr_warmup_epochs:
-          self.scheduler.step(valid_logs['loss'])
+      if epoch < params.lr_warmup_epochs:
+        self.optimizer.param_groups[0]['lr'] = params.lr*float(epoch+1.)/float(params.lr_warmup_epochs)
 
-        if self.params.world_rank == 0:
-          if self.params.save_checkpoint:
-            #checkpoint at the end of every epoch
-            self.save_checkpoint(self.params.checkpoint_path)
+      start = time.time()
+      # PROF: Add custom NVTX ranges
+      nvtx_range_push('epoch {}'.format(self.epoch), self.profiler_running)
+      # PROF: Enable torch built-in NVTX ranges. Disabled for this example to reduce profiling overhead.
+      with torch.autograd.profiler.emit_nvtx(enabled=False):#enabled=self.profiler_running):
+        train_logs = self.train_one_epoch()
+      nvtx_range_pop(self.profiler_running)
+      valid_time, valid_logs = self.validate_one_epoch()
+      if epoch >= params.lr_warmup_epochs:
+        self.scheduler.step(valid_logs['loss'])
 
-        if self.params.log_to_tensorboard:
-          self.writer.add_scalar('loss/train', train_logs['loss'], self.epoch)
-          self.writer.add_scalar('loss/valid', valid_logs['loss'], self.epoch)
-          self.writer.add_scalar('acc1/train', train_logs['acc1'], self.epoch)
-          self.writer.add_scalar('acc1/valid', valid_logs['acc1'], self.epoch)
-          self.writer.add_scalar('learning_rate', self.optimizer.param_groups[0]['lr'], self.epoch)
+      if self.params.world_rank == 0:
+        if self.params.save_checkpoint:
+          #checkpoint at the end of every epoch
+          self.save_checkpoint(self.params.checkpoint_path)
 
-        if self.params.log_to_screen:
-          logging.info('Time taken for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
-          logging.info('train data time={}, train time={}, valid step time={}, train acc1={}, valid acc1={}'.format(data_time, tr_time,
-                                                                                                                  valid_time,
-                                                                                                                  train_logs['acc1'],
-                                                                                                                  valid_logs['acc1']))
+      if self.params.log_to_tensorboard:
+        self.writer.add_scalar('loss/train', train_logs['loss'], self.epoch)
+        self.writer.add_scalar('loss/valid', valid_logs['loss'], self.epoch)
+        self.writer.add_scalar('acc1/train', train_logs['acc1'], self.epoch)
+        self.writer.add_scalar('acc1/valid', valid_logs['acc1'], self.epoch)
+        self.writer.add_scalar('learning_rate', self.optimizer.param_groups[0]['lr'], self.epoch)
+
+      if self.params.log_to_screen:
+        logging.info('Time taken for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
+        logging.info('train acc1={}, valid acc1={}'.format(train_logs['acc1'], valid_logs['acc1']))
+
+      if self.params.enable_profiling:
+        nvtx_range_pop(self.profiler_running)
+        self.profiler_running = False
 
   def train_one_epoch(self):
     self.epoch += 1
-    tr_time = 0
-    data_time = 0
-    report_time = report_bs = 0
+    torch.cuda.synchronize()
+    report_time = time.time()
+    report_bs = 0
     for i, data in enumerate(self.train_data_loader, 0):
       # PROF: Add custom NVTX ranges
-      nvtx_range_push('iteration {}'.format(i), self.params.enable_profiling)
+      nvtx_range_push('iteration {}'.format(i), self.profiler_running)
       self.iters += 1
-      iter_start = time.time()
-      data_start = time.time()
       # PROF: Add custom NVTX ranges
-      nvtx_range_push('data', self.params.enable_profiling)
+      nvtx_range_push('data', self.profiler_running)
       images, labels = map(lambda x: x.to(self.device), data)
       # NHWC: Convert input images to channels_last memory format
       if self.params.enable_nhwc:
         images = images.to(memory_format=torch.channels_last)
-      nvtx_range_pop(self.params.enable_profiling)
-      data_time += time.time() - data_start
+      nvtx_range_pop(self.profiler_running)
 
-      tr_start = time.time()
       # PROF: Add custom NVTX ranges
-      nvtx_range_push('zero_grad', self.params.enable_profiling)
+      nvtx_range_push('zero_grad', self.profiler_running)
       if self.params.enable_extra_opts:
         # EXTRA: Use set_to_none option to avoid slow memsets to zero
         self.model.zero_grad(set_to_none=True)
       else:
         self.model.zero_grad()
-      nvtx_range_pop(self.params.enable_profiling)
+      nvtx_range_pop(self.profiler_running)
       self.model.train()
+      # PROF: Add custom NVTX ranges
+      nvtx_range_push('forward/loss/backward', self.profiler_running)
       # AMP: Add autocast context manager
       with torch.cuda.amp.autocast(enabled=self.params.enable_amp):
-        # PROF: Add custom NVTX ranges
-        nvtx_range_push('forward + loss', self.params.enable_profiling)
         outputs = self.model(images)
         loss = self.criterion(outputs, labels)
-        nvtx_range_pop(self.params.enable_profiling)
 
-      # PROF: Add custom NVTX ranges
-      nvtx_range_push('backward', self.params.enable_profiling)
       # AMP: Use GradScaler to scale loss and run backward to produce scaled gradients
       self.grad_scaler.scale(loss).backward()
-      nvtx_range_pop(self.params.enable_profiling)
+      nvtx_range_pop(self.profiler_running)
 
       # PROF: Add custom NVTX ranges
-      nvtx_range_push('optimizer step', self.params.enable_profiling)
+      nvtx_range_push('optimizer.step', self.profiler_running)
       # AMP: Run optimizer step through GradScaler (unscales gradients and skips steps if required)
       self.grad_scaler.step(self.optimizer)
-      nvtx_range_pop(self.params.enable_profiling)
+      nvtx_range_pop(self.profiler_running)
 
       # AMP: Update GradScaler loss scale value
       self.grad_scaler.update()
 
-      nvtx_range_pop(self.params.enable_profiling)
+      torch.cuda.synchronize()
+      nvtx_range_pop(self.profiler_running)
 
-      tr_time += time.time() - tr_start
-      iter_time = time.time() - iter_start
-      report_time += iter_time
       report_bs += len(images)
 
       if i % self.params.log_freq == 0:
-        logging.info('Epoch: {}, Iteration: {}, Avg img/sec: {}'.format(self.epoch, i, report_bs / report_time))
-        report_time = report_bs = 0
+        torch.cuda.synchronize()
+        logging.info('Epoch: {}, Iteration: {}, Avg img/sec: {}'.format(self.epoch, i, report_bs / (time.time() - report_time)))
+        report_time = time.time()
+        report_bs = 0
 
-      if self.params.enable_profiling and self.iters >= self.params.profiling_iters:
+      if self.params.enable_profiling and i >= self.params.profiling_iters_per_epoch:
         break
 
     # save metrics of last batch
@@ -206,7 +206,7 @@ class Trainer():
         dist.all_reduce(logs[key].detach())
         logs[key] = float(logs[key]/dist.get_world_size())
 
-    return tr_time, data_time, logs
+    return logs
 
   def validate_one_epoch(self):
     self.model.eval()
@@ -277,7 +277,7 @@ if __name__ == '__main__':
     params['global_batch_size'] = params.batch_size
     params['batch_size'] = int(params.batch_size//params['world_size'])
 
-  # EXTRA: enable cuDNN autotuning
+  # EXTRA: enable cuDNN autotuning.
   if params.enable_extra_opts:
     torch.backends.cudnn.benchmark = True
 

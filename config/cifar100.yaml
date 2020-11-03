@@ -27,7 +27,8 @@ default: &DEFAULT
   enable_extra_opts: !!bool False
 
   enable_profiling: !!bool False
-  profiling_iters: 40
+  profiling_epoch_start: 2
+  profiling_iters_per_epoch: 100
 
 bs128:
   <<: *DEFAULT
@@ -42,7 +43,7 @@ bs256-prof:
   lr: !!float 0.14
   batch_size: 256
   enable_profiling: True
-  max_epochs: 1
+  max_epochs: 2
   save_checkpoint: False
 
 bs256-amp:
@@ -57,7 +58,7 @@ bs256-amp-prof:
   batch_size: 256
   enable_amp: True
   enable_profiling: True
-  max_epochs: 1
+  max_epochs: 2
   save_checkpoint: False
 
 bs256-amp-nhwc:
@@ -74,7 +75,7 @@ bs256-amp-nhwc-prof:
   enable_amp: True
   enable_nhwc: True
   enable_profiling: True
-  max_epochs: 1
+  max_epochs: 2
   save_checkpoint: False
 
 bs256-amp-nhwc-extra-opts:
@@ -93,7 +94,7 @@ bs256-amp-nhwc-extra-opts-prof:
   enable_nhwc: True
   enable_extra_opts: True
   enable_profiling: True
-  max_epochs: 1
+  max_epochs: 2
   save_checkpoint: False
 
 bs512:
