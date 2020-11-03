@@ -14,6 +14,8 @@ import models.resnet
 from utils.YParams import YParams
 from utils.cifar100_data_loader import get_data_loader
 
+import apex
+
 # PROF: define wrapped NVTX range routines with device syncs
 def nvtx_range_push(name, enabled):
   if enabled:
@@ -31,7 +33,7 @@ class Trainer():
     self.params = params
     self.device = torch.cuda.current_device()
     # AMP: Construct GradScaler for loss scaling
-    self.grad_scaler = torch.cuda.amp.GradScaler(self.params.enable_amp)
+    self.grad_scaler = torch.cuda.amp.GradScaler(enabled=self.params.enable_amp)
 
     # first constrcut the dataloader on rank0 in case the data is not downloaded
     if params.world_rank == 0:
@@ -57,8 +59,13 @@ class Trainer():
       # NHWC: Convert model to channels_last memory format
       self.model = self.model.to(memory_format=torch.channels_last)
 
-    self.optimizer = torch.optim.SGD(self.model.parameters(), lr=params.lr,
-                                     momentum=params.momentum, weight_decay=params.weight_decay)
+    if self.params.enable_extra_opts:
+      # EXTRA: use Apex FusedSGD optimizer
+      self.optimizer = apex.optimizers.FusedSGD(self.model.parameters(), lr=params.lr,
+                                                momentum=params.momentum, weight_decay=params.weight_decay)
+    else:
+      self.optimizer = torch.optim.SGD(self.model.parameters(), lr=params.lr,
+                                       momentum=params.momentum, weight_decay=params.weight_decay)
     self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.2, patience=10, mode='min')
     self.criterion = torch.nn.CrossEntropyLoss().to(self.device)
 
@@ -144,11 +151,15 @@ class Trainer():
       tr_start = time.time()
       # PROF: Add custom NVTX ranges
       nvtx_range_push('zero_grad', self.params.enable_profiling)
-      self.model.zero_grad()
+      if self.params.enable_extra_opts:
+        # EXTRA: Use set_to_none option to avoid slow memsets to zero
+        self.model.zero_grad(set_to_none=True)
+      else:
+        self.model.zero_grad()
       nvtx_range_pop(self.params.enable_profiling)
       self.model.train()
       # AMP: Add autocast context manager
-      with torch.cuda.amp.autocast(self.params.enable_amp):
+      with torch.cuda.amp.autocast(enabled=self.params.enable_amp):
         # PROF: Add custom NVTX ranges
         nvtx_range_push('forward + loss', self.params.enable_profiling)
         outputs = self.model(images)
@@ -266,7 +277,9 @@ if __name__ == '__main__':
     params['global_batch_size'] = params.batch_size
     params['batch_size'] = int(params.batch_size//params['world_size'])
 
-  torch.backends.cudnn.benchmark = True
+  # EXTRA: enable cuDNN autotuning
+  if params.enable_extra_opts:
+    torch.backends.cudnn.benchmark = True
 
   # setup output directory
   expDir = os.path.join('./expts', args.config)

@@ -24,6 +24,7 @@ default: &DEFAULT
 
   enable_amp: !!bool False
   enable_nhwc: !!bool False
+  enable_extra_opts: !!bool False
 
   enable_profiling: !!bool False
   profiling_iters: 40
@@ -65,6 +66,35 @@ bs256-amp-nhwc:
   batch_size: 256
   enable_amp: True
   enable_nhwc: True
+
+bs256-amp-nhwc-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
+  enable_profiling: True
+  max_epochs: 1
+  save_checkpoint: False
+
+bs256-amp-nhwc-extra-opts:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
+
+bs256-amp-nhwc-extra-opts-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
+  enable_profiling: True
+  max_epochs: 1
+  save_checkpoint: False
 
 bs512:
   <<: *DEFAULT
