@@ -11,7 +11,7 @@ To run single GPU training of the baseline training script, use the following co
 ```
 $ python -m torch.distributed.launch --nproc_per_node=1 train.py --config=bs256
 ```
-This is run the training on a single GPU using batch size of 256 (see `config/cifar100/yaml` for specific configuration details.
+This is run the training on a single GPU using batch size of 256 (see `config/cifar100/yaml` for specific configuration details.)
 
 This is the performance of the baseline script using the NGC PyTorch 20.10 container for the first two epochs on a 16GB V100 card:
 ```
@@ -42,7 +42,7 @@ INFO - Time taken for epoch 2 is 78.5151789188385 sec
 
 ### Profiling with Nsight Systems
 Before generating a profile with Nsight, we can add NVTX ranges to the script to add context to the produced timeline. First, we can enable PyTorch's built-in NVTX annotations by using the `torch.autograd.profiler.emit_nvtx` context manager.
-We can also manually add some manually defined NVTX ranges to the code using `torch.cuda.nvtx.range_push` and `torch.cuda.nvtx.range_pop`. Search `train.py` for comments labeled `# PROF:` to see where we've added code.
+We can also manually add some manually defined NVTX ranges to the code using `torch.cuda.nvtx.range_push` and `torch.cuda.nvtx.range_pop`. Search `train.py` for comments labeled `# PROF` to see where we've added code.
 As a quick note, we defined some simple functions to wrap the NVTX range calls in order to add synchronization:
 ```
 def nvtx_range_push(name, enabled):
@@ -67,6 +67,7 @@ The args `--capture-range=nvtx --nvtx-capture=PROFILE` and variable `NSYS_NVTX_P
 
 Loading this profile in Nsight Systems will look like this:
 INSERT BASELINE PROFILE IMAGE HERE
+![Baseline](tutorial_images/nsys_baseline_full.png)
 
 With our NVTX ranges, we can easily zoom into a single iteration and get an idea of where compute time is being spent:
 INSERT ZOOMED BASELINE PROFILE IMAGE HERE
@@ -195,7 +196,6 @@ INFO - Epoch: 1, Iteration: 140, Avg img/sec: 2567.007655538539
 INFO - Epoch: 1, Iteration: 160, Avg img/sec: 2531.0173058079126
 INFO - Epoch: 1, Iteration: 180, Avg img/sec: 2577.144387068793
 INFO - Time taken for epoch 1 is 30.52899408340454 sec
-INFO - train acc1=0.015625, valid acc1=0.014022435992956161
 INFO - Epoch: 2, Iteration: 0, Avg img/sec: 410.57308753695185
 INFO - Epoch: 2, Iteration: 20, Avg img/sec: 2547.8182536936824
 INFO - Epoch: 2, Iteration: 40, Avg img/sec: 2519.104752035505
@@ -206,6 +206,7 @@ INFO - Epoch: 2, Iteration: 120, Avg img/sec: 2542.63597641221
 INFO - Epoch: 2, Iteration: 140, Avg img/sec: 2502.990963521907
 INFO - Epoch: 2, Iteration: 160, Avg img/sec: 2525.3185224087124
 INFO - Epoch: 2, Iteration: 180, Avg img/sec: 2501.353650885946
+INFO - Time taken for epoch 2 is 25.808385372161865 sec
 ```
 
 ## Distributed GPU training
