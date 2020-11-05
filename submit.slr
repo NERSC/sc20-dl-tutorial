@@ -11,7 +11,7 @@
 #SBATCH --cpus-per-task=40
 #SBATCH -o sout/%j.out
 
-#SBATCH --image=nersc/pytorch:ngc-20.08-v0
+#SBATCH --image=nersc/pytorch:ngc-20.10-v0
 #SBATCH --volume="/dev/infiniband:/sys/class/infiniband_verbs"
 
 srun --nodes=1 --ntasks=1 shifter --env HDF5_USE_FILE_LOCKING=FALSE <<EOF
