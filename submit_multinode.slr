@@ -7,12 +7,9 @@
 #SBATCH --cpus-per-task=80
 #SBATCH -o sout/%j.out
 
-##SBATCH --image=nersc/pytorch:ngc-20.10-v0
-##SBATCH --volume="/dev/infiniband:/sys/class/infiniband_verbs"
-
 # Configuration
 nproc_per_node=8
-config=bs2048_warmup
+config=bs2048-warmup-opt
 
 # Load software
 module load cgpu

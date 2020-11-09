@@ -1,15 +1,16 @@
 #!/bin/bash -l
 #SBATCH -C gpu
+#SBATCH -A m1759
 #SBATCH --time=4:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --gpus-per-task=4
-#SBATCH --cpus-per-task=40
+#SBATCH --gpus-per-task=1
+#SBATCH --cpus-per-task=10
 #SBATCH -o sout/%j.out
 
 # Configuration
-nproc_per_node=4
-config=bs1024
+nproc_per_node=1
+config=bs128-opt
 
 # Load software
 module load cgpu
