@@ -33,7 +33,7 @@ do
 
   # Launch one SLURM task per node, and use torch distributed launch utility
   # to spawn training worker processes; one per GPU
-  srun -N 1 -n 1 -w $node python -m torch.distributed.launch
+  srun -N 1 -n 1 -w $node python -m torch.distributed.launch \
     --nproc_per_node=$nproc_per_node --nnodes=$SLURM_JOB_NUM_NODES \
     --node_rank=$node_rank --master_addr=$master_addr \
     train.py --config=$config &
