@@ -325,3 +325,5 @@ weights in the distributed setting.
 **Point out our implementation of convergence tricks**
 
 **Discuss results, overall speedup**
+
+![Weak scaling training throughput](tutorial_images/throughputScaling.png)
