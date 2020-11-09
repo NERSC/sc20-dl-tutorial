@@ -20,6 +20,15 @@ default: &DEFAULT
   log_to_screen: !!bool True
   log_to_tensorboard: !!bool True
   save_checkpoint: !!bool True
+  log_freq: 20
+
+  enable_amp: !!bool False
+  enable_nhwc: !!bool False
+  enable_extra_opts: !!bool False
+
+  enable_profiling: !!bool False
+  profiling_epoch_start: 2
+  profiling_iters_per_epoch: 100
 
 bs128:
   <<: *DEFAULT
@@ -28,6 +37,65 @@ bs256:
   <<: *DEFAULT
   lr: !!float 0.14
   batch_size: 256
+
+bs256-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_profiling: True
+  max_epochs: 2
+  save_checkpoint: False
+
+bs256-amp:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+
+bs256-amp-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_profiling: True
+  max_epochs: 2
+  save_checkpoint: False
+
+bs256-amp-nhwc:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
+
+bs256-amp-nhwc-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
+  enable_profiling: True
+  max_epochs: 2
+  save_checkpoint: False
+
+bs256-amp-nhwc-extra-opts:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
+
+bs256-amp-nhwc-extra-opts-prof:
+  <<: *DEFAULT
+  lr: !!float 0.14
+  batch_size: 256
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
+  enable_profiling: True
+  max_epochs: 2
+  save_checkpoint: False
 
 bs512:
   <<: *DEFAULT
