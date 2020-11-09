@@ -4,14 +4,25 @@ This repository contains the example code material for the SC20 tutorial:
 *Deep Learning at Scale*.
 
 The example demonstrates *synchronous data-parallel distributed training* of a
-convolutional deep neural network on a standard computer vision problem.
-In particular, we are training ResNet50 on the CIFAR100 dataset to classify
-images into 100 classes.
+convolutional deep neural network implemented in [PyTorch](https://pytorch.org/)
+on a standard computer vision problem. In particular, we are training ResNet50
+on the [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) dataset to
+classify images into 100 classes.
+
+**Contents**
+* [Links](#links)
+* [Installation](#installation)
+* [Model, data, and training code overview](#model-data-and-training-code-overview)
+* [Single GPU training](#single-gpu-training)
+* [Performance profiling and optimization](#performance-profiling-and-optimization)
+    * [Profiling with Nsight Systems](#profiling-with-nsight-systems)
+    * [Enabling Mixed Precision Training](#enabling-mixed-precision-training)
+    * [Applying additional PyTorch optimizations](#applying-additional-pytorch-optimizations)
+* [Distributed GPU training](#distributed-gpu-training)
 
 ## Links
 
-Presentation slides for the tutorial can be found at (**Need to update sharing
-privileges**):
+Presentation slides for the tutorial can be found at:
 https://drive.google.com/drive/folders/1-gi1WvfQ6alDOnMwN3JqgNlrQh7MlIQr?usp=sharing
 
 ## Installation
@@ -28,21 +39,51 @@ an NVIDIA NGC PyTorch container.
 The network architecture for our ResNet50 model can be found in
 [models/resnet.py](models/resnet.py). Here we have copied the ResNet50
 implementation from torchvision and made a few minor adjustments for the
-CIFAR dataset (reducing stride and pooling).
+CIFAR dataset (e.g. reducing stride and pooling).
 
 The data pipeline code can be found in
 [utils/cifar100\_data\_loader.py](utils/cifar100_data_loader.py).
+Note that the dataset code for this example is fairly simple because the
+torchvision package provides the dataset class which handles the image
+loading for us. Key ingredients:
+* We compose a sequence of data transforms for normalization and random
+  augmentation of the images.
+* We construct a `datasets.CIFAR100` dataset which will automatically download
+  the dataset to a specified directory. We pass it our list of transforms.
+* We construct a DataLoader which orchestrates the random sampling and batching
+  of our images.
 
-The basic training logic can be found in [train.py](train.py). We define a
-simple Trainer class with methods for training epochs and evaluating.
+The basic training logic can be found in [train.py](train.py).
+In this training script we have defined a simple Trainer class which
+implements methods for training and validation epochs. Key ingredients:
+* In the Trainer's `__init__` method, we get the data loaders, construct our
+  ResNet50 model, the SGD optimizer, and our `CrossEntropyLoss` objective
+  function.
+* In the Trainer's `train_one_epoch` method, we implement the actual logic for
+  training the model on batches of data.
+    * Identify where we loop over data batches from our data loader.
+    * Identify where we apply the forward pass of the model ("Model forward pass")
+      and compute the loss function.
+    * Identify where we call `backward()` on the loss value. Note the use of the
+      `grad_scaler` will be explained below when enabling mixed precision.
+* Similarly, in the Trainer's `validate_one_epoch`, we implement the simpler
+  logic of applying the model to a validation dataset and compute metrics like
+  accuracy.
+* Checkpoint saving and loading are implemented in the Trainer's `save_checkpoint`
+  and `restore_checkpoint` methods, respectively.
+* We construct and use a TensorBoard SummaryWriter for logging metrics to
+  visualize in TensorBoard. See if you can find where our specific metrics
+  are logged via the `add_scalar` call.
 
 ## Single GPU training
 
 To run single GPU training of the baseline training script, use the following command:
 ```
-$ python -m torch.distributed.launch --nproc_per_node=1 train.py --config=bs256
+$ python train.py --config=bs256
 ```
-This is run the training on a single GPU using batch size of 256 (see `config/cifar100/yaml` for specific configuration details.)
+This will run the training on a single GPU using batch size of 256 (see `config/cifar100.yaml` for specific configuration details.)
+
+**Would be good to show a convergence result here, e.g. TB screenshot.**
 
 ## Performance profiling and optimization
 
@@ -247,4 +288,37 @@ With these additional optimizations enabled in PyTorch, we see the length of the
 
 ## Distributed GPU training
 
-Documentation in development.
+Now that we have model training code that is optimized for training on a single GPU,
+we are ready to utilize multiple GPUs and multiple nodes to accelerate the workflow
+with *distributed training*. We will use the recommended `DistributedDataParallel`
+wrapper in PyTorch with the NCCL backend for optimized communication operations on
+systems with NVIDIA GPUs. Refer to the PyTorch documentation for additional details
+on the distributed package: https://pytorch.org/docs/stable/distributed.html
+
+We use the `torch.distributed.launch` utility for launching training processes
+on one node, one per GPU. The [submit\_multinode.slr](submit_multinode.slr)
+script shows how we use the utility with SLURM to launch the tasks on each node
+in our system allocation.
+
+In the [train.py](train.py) script, near the bottom in the main script execution,
+we set up the distributed backend. We use the environment variable initialization
+method, automatically configured for us when we use the `torch.distributed.launch` utility.
+
+In the `get_data_loader` function in
+[utils/cifar100\_data\_loader.py](utils/cifar100_data_loader.py), we use the
+DistributedSampler from PyTorch which takes care of partitioning the dataset
+so that each training process sees a unique subset.
+
+In our Trainer's `__init__` method, after our ResNet50 model is constructed,
+we convert it to a distributed data parallel model by wrapping it as:
+
+    self.model = DistributedDataParallel(self.model, ...)
+
+The DistributedDataParallel (DDP) model wrapper takes care of broadcasting
+initial model weights to all workers and performing all-reduce on the gradients
+in the training backward pass to properly synchronize and update the model
+weights in the distributed setting.
+
+**Point out our implementation of convergence tricks**
+
+**Discuss results, overall speedup**
