@@ -311,7 +311,9 @@ so that each training process sees a unique subset.
 
 In our Trainer's `__init__` method, after our ResNet50 model is constructed,
 we convert it to a distributed data parallel model by wrapping it as:
+
     self.model = DistributedDataParallel(self.model, ...)
+
 The DistributedDataParallel (DDP) model wrapper takes care of broadcasting
 initial model weights to all workers and performing all-reduce on the gradients
 in the training backward pass to properly synchronize and update the model
