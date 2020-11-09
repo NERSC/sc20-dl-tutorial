@@ -9,6 +9,17 @@ on a standard computer vision problem. In particular, we are training ResNet50
 on the [CIFAR-100](https://www.cs.toronto.edu/~kriz/cifar.html) dataset to
 classify images into 100 classes.
 
+**Contents**
+* [Links](#links)
+* [Installation](#installation)
+* [Model, data, and training code overview](#model-data-and-training-code-overview)
+* [Single GPU training](#single-gpu-training)
+* [Performance profiling and optimization](#performance-profiling-and-optimization)
+    * [Profiling with Nsight Systems](#profiling-with-nsight-systems)
+    * [Enabling Mixed Precision Training](#enabling-mixed-precision-training)
+    * [Applying additional PyTorch optimizations](#applying-additional-pytorch-optimizations)
+* [Distributed GPU training](#distributed-gpu-training)
+
 ## Links
 
 Presentation slides for the tutorial can be found at:
