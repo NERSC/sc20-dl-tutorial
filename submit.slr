@@ -7,9 +7,6 @@
 #SBATCH --cpus-per-task=40
 #SBATCH -o sout/%j.out
 
-##SBATCH --image=nersc/pytorch:ngc-20.10-v0
-##SBATCH --volume="/dev/infiniband:/sys/class/infiniband_verbs"
-
 # Configuration
 nproc_per_node=4
 config=bs1024

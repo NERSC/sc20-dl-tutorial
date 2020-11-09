@@ -33,6 +33,7 @@ default: &DEFAULT
 bs128:
   <<: *DEFAULT
 
+#  --- Optimization experiments --- #
 bs256:
   <<: *DEFAULT
   lr: !!float 0.14
@@ -97,32 +98,56 @@ bs256-amp-nhwc-extra-opts-prof:
   max_epochs: 2
   save_checkpoint: False
 
-bs512:
+#  --- Scaling experiments --- #
+bs128-opt:
+  <<: *DEFAULT
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
+
+bs512-opt:
   <<: *DEFAULT
   lr: !!float 0.2
   batch_size: 512
   max_epochs: 120
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
 
-bs1024:
+bs1024-opt:
   <<: *DEFAULT
   lr: !!float 0.28
   batch_size: 1024
+  max_epochs: 120
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
 
-bs2048:
+bs2048-opt:
   <<: *DEFAULT
   lr: !!float 0.4
   batch_size: 2048
   max_epochs: 120
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
 
-bs1024_warmup:
+bs1024-warmup-opt:
   <<: *DEFAULT
   lr: !!float 0.28
   batch_size: 1024
+  max_epochs: 120
   lr_warmup_epochs: 8
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
 
-bs2048_warmup:
+bs2048-warmup-opt:
   <<: *DEFAULT
   lr: !!float 0.4
   batch_size: 2048
   lr_warmup_epochs: 16
   max_epochs: 120
+  enable_amp: True
+  enable_nhwc: True
+  enable_extra_opts: True
