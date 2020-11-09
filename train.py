@@ -140,12 +140,16 @@ class Trainer():
     torch.cuda.synchronize()
     report_time = time.time()
     report_bs = 0
+
+    # Loop over training data batches
     for i, data in enumerate(self.train_data_loader, 0):
       # PROF: Add custom NVTX ranges
       nvtx_range_push('iteration {}'.format(i), self.profiler_running)
       self.iters += 1
+
       # PROF: Add custom NVTX ranges
       nvtx_range_push('data', self.profiler_running)
+      # Move our images and labels to GPU
       images, labels = map(lambda x: x.to(self.device), data)
       # NHWC: Convert input images to channels_last memory format
       if self.params.enable_nhwc:
@@ -161,10 +165,13 @@ class Trainer():
         self.model.zero_grad()
       nvtx_range_pop(self.profiler_running)
       self.model.train()
+
       # PROF: Add custom NVTX ranges
       nvtx_range_push('forward/loss/backward', self.profiler_running)
       # AMP: Add autocast context manager
       with torch.cuda.amp.autocast(enabled=self.params.enable_amp):
+
+        # Model forward pass and loss computation
         outputs = self.model(images)
         loss = self.criterion(outputs, labels)
 
