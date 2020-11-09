@@ -79,15 +79,18 @@ implements methods for training and validation epochs. Key ingredients:
 
 To run single GPU training of the baseline training script, use the following command:
 ```
-$ python train.py --config=bs256
+$ python train.py --config=bs128
 ```
-This will run the training on a single GPU using batch size of 256 (see `config/cifar100.yaml` for specific configuration details.)
+This will run the training on a single GPU using batch size of 128
+(see `config/cifar100.yaml` for specific configuration details).
+Note we will use batch size 256 for the optimization work in the next section
+and will push beyond to larger batch sizes in the distributed training section.
 
 **Would be good to show a convergence result here, e.g. TB screenshot.**
 
 ## Performance profiling and optimization
 
-This is the performance of the baseline script using the NGC PyTorch 20.10 container for the first two epochs on a 16GB V100 card:
+This is the performance of the baseline script using the NGC PyTorch 20.10 container for the first two epochs on a 16GB V100 card with batch size 256:
 ```
 INFO - Starting Training Loop...
 INFO - Epoch: 1, Iteration: 0, Avg img/sec: 110.19908073510402
