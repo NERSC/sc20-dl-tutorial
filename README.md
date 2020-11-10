@@ -301,6 +301,8 @@ wrapper in PyTorch with the NCCL backend for optimized communication operations 
 systems with NVIDIA GPUs. Refer to the PyTorch documentation for additional details
 on the distributed package: https://pytorch.org/docs/stable/distributed.html
 
+### Code basics
+
 We use the `torch.distributed.launch` utility for launching training processes
 on one node, one per GPU. The [submit\_multinode.slr](submit_multinode.slr)
 script shows how we use the utility with SLURM to launch the tasks on each node
@@ -325,7 +327,11 @@ initial model weights to all workers and performing all-reduce on the gradients
 in the training backward pass to properly synchronize and update the model
 weights in the distributed setting.
 
-**Point out our implementation of convergence tricks**
+### Large batch convergence
+
+![Accuracy for bs128, bs1024, bs2048](acc1.png)
+![Accuracy for bs128, bs1024 warmup, bs2048 warmup](acc2.png)
+![Accuracy vs time for bs128, bs1024 warmup, bs2048 warmup](acc3.png)
 
 **Discuss results, overall speedup**
 
