@@ -38,7 +38,14 @@ installation is needed; you can simply use our provided modules or
 shifter containers.
 
 See the [submit.slr](submit.slr) slurm script for a simple example using
-an NVIDIA NGC PyTorch container.
+our PyTorch 1.7.0 installation for GPU.
+
+Otherwise, our package dependencies:
+- pytorch 1.7.0
+- torchvision
+- apex
+- ruamel.yaml
+- nccl
 
 ## Model, data, and training code overview
 
