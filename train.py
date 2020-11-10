@@ -101,6 +101,7 @@ class Trainer():
         self.train_sampler.set_epoch(epoch)
         self.valid_sampler.set_epoch(epoch)
 
+      # Apply learning rate warmup
       if epoch < params.lr_warmup_epochs:
         self.optimizer.param_groups[0]['lr'] = params.lr*float(epoch+1.)/float(params.lr_warmup_epochs)
 

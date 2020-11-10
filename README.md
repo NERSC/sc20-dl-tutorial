@@ -19,6 +19,8 @@ classify images into 100 classes.
     * [Enabling Mixed Precision Training](#enabling-mixed-precision-training)
     * [Applying additional PyTorch optimizations](#applying-additional-pytorch-optimizations)
 * [Distributed GPU training](#distributed-gpu-training)
+    * [Code basics](#code-basics)
+    * [Large batch convergence](#large-batch-convergence)
 
 ## Links
 
@@ -329,10 +331,36 @@ weights in the distributed setting.
 
 ### Large batch convergence
 
+To speed up training, we try to use larger batch sizes, spread across more GPUs,
+with larger learning rates. In particular, we try increasing from 1 to 8 then 16 gpus,
+and scale the batch size similarly to 1024 and 2048.
+The first thing we demonstrate here is increasing
+the learning rate according to the square-root scaling rule. The settings for
+batch size 512, 1024, and 2048 are in [config/cifar100.yaml](config/cifar100.yaml)
+under `bs512-opt`, `bs1024-opt`, and `bs2048-opt`, respectively.
+We view the accuracy plots in TensorBoard and notice that the convergence
+performs worse with larger batch size, i.e. we see a generalization gap:
 ![Accuracy for bs128, bs1024, bs2048](tutorial_images/acc1.png)
+
+Next, as suggested in the presentation previously, we apply a linear learning rate
+warmup for these batch sizes. You can see where we compute the learning rate
+in the warmup phase in our Trainer's `train` method in the `train.py` script.
+Look for the comment, "Apply learning rate warmup".
+As shown in configs `bs1024-warmup-opt` and `bs2048-warmup-opt` in our
+`config/cifar100.yaml` file, we use 8 and 16 epochs for the warmup,
+respectively.
+
+Now we can see the generalization gap closes and
+the higher batch size results are as good as the original batch size 128:
 ![Accuracy for bs128, bs1024 warmup, bs2048 warmup](tutorial_images/acc2.png)
+
+Next, we can now look at the wallclock time to see that, indeed, using
+these tricks together result in a much faster convergence:
 ![Accuracy vs time for bs128, bs1024 warmup, bs2048 warmup](tutorial_images/acc3.png)
+In particular, our batch size 128 run on 1 gpu takes about 32 min to converge,
+while our batch size 2048 run on 16 gpus takes around 4 min.
 
-**Discuss results, overall speedup**
-
+Finally, we look at the throughput (images/second) of our training runs as
+we do this weak scaling of the batch size and GPUs:
 ![Weak scaling training throughput](tutorial_images/throughputScaling.png)
+These plots show 81% scaling efficiency with respect to ideal scaling at 16 GPUs.
