@@ -86,7 +86,10 @@ This will run the training on a single GPU using batch size of 128
 Note we will use batch size 256 for the optimization work in the next section
 and will push beyond to larger batch sizes in the distributed training section.
 
-**Would be good to show a convergence result here, e.g. TB screenshot.**
+In the baseline configuration, the model converges to about 75% accuracy on
+the validation dataset in about 80 epochs:
+
+![bs128 learning curves](tutorial_images/bs128_learning.png)
 
 ## Performance profiling and optimization
 
