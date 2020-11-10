@@ -329,9 +329,9 @@ weights in the distributed setting.
 
 ### Large batch convergence
 
-![Accuracy for bs128, bs1024, bs2048](acc1.png)
-![Accuracy for bs128, bs1024 warmup, bs2048 warmup](acc2.png)
-![Accuracy vs time for bs128, bs1024 warmup, bs2048 warmup](acc3.png)
+![Accuracy for bs128, bs1024, bs2048](tutorial_images/acc1.png)
+![Accuracy for bs128, bs1024 warmup, bs2048 warmup](tutorial_images/acc2.png)
+![Accuracy vs time for bs128, bs1024 warmup, bs2048 warmup](tutorial_images/acc3.png)
 
 **Discuss results, overall speedup**
 
