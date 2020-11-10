@@ -27,6 +27,10 @@ classify images into 100 classes.
 Presentation slides for the tutorial can be found at:
 https://drive.google.com/drive/folders/1-gi1WvfQ6alDOnMwN3JqgNlrQh7MlIQr?usp=sharing
 
+We have a nersc-dl-tutorial slack you can join. Use this link and join the
+`#sc20-dl-tutorial` channel:
+https://join.slack.com/t/nersc-dl-tutorial/shared\_invite/zt-iwyrkhza-h\_Oun~8JO9xDKZynD5hERA
+
 ## Installation
 
 If you're running these examples on the Cori GPU system at NERSC, no
