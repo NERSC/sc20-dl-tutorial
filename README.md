@@ -66,7 +66,7 @@ loading for us. Key ingredients:
 * We construct a DataLoader which orchestrates the random sampling and batching
   of our images.
 
-The basic training logic can be found in [train.py](train.py).
+The basic training logic can be found in [train\_simple.py](train_simple.py).
 In this training script we have defined a simple Trainer class which
 implements methods for training and validation epochs. Key ingredients:
 * In the Trainer's `__init__` method, we get the data loaders, construct our
@@ -87,6 +87,11 @@ implements methods for training and validation epochs. Key ingredients:
 * We construct and use a TensorBoard SummaryWriter for logging metrics to
   visualize in TensorBoard. See if you can find where our specific metrics
   are logged via the `add_scalar` call.
+
+Besides the `train_simple.py` script, we have a more complex [train.py](train.py)
+script which implements the same functionality but also includes a lot of
+additional optimizations which will be covered in the Performance profiling and
+optimization section below.
 
 ## Single GPU training
 
