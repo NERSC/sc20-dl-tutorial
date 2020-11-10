@@ -340,6 +340,7 @@ batch size 512, 1024, and 2048 are in [config/cifar100.yaml](config/cifar100.yam
 under `bs512-opt`, `bs1024-opt`, and `bs2048-opt`, respectively.
 We view the accuracy plots in TensorBoard and notice that the convergence
 performs worse with larger batch size, i.e. we see a generalization gap:
+
 ![Accuracy for bs128, bs1024, bs2048](tutorial_images/acc1.png)
 
 Next, as suggested in the presentation previously, we apply a linear learning rate
@@ -352,15 +353,20 @@ respectively.
 
 Now we can see the generalization gap closes and
 the higher batch size results are as good as the original batch size 128:
+
 ![Accuracy for bs128, bs1024 warmup, bs2048 warmup](tutorial_images/acc2.png)
 
 Next, we can now look at the wallclock time to see that, indeed, using
 these tricks together result in a much faster convergence:
+
 ![Accuracy vs time for bs128, bs1024 warmup, bs2048 warmup](tutorial_images/acc3.png)
+
 In particular, our batch size 128 run on 1 gpu takes about 32 min to converge,
 while our batch size 2048 run on 16 gpus takes around 4 min.
 
 Finally, we look at the throughput (images/second) of our training runs as
 we do this weak scaling of the batch size and GPUs:
+
 ![Weak scaling training throughput](tutorial_images/throughputScaling.png)
+
 These plots show 81% scaling efficiency with respect to ideal scaling at 16 GPUs.
